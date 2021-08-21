@@ -1,1 +1,4 @@
-
+Deflection sens.: 10.55 nm/V
+Cantilever stiffness:  0.3719 N/m
+Tip radius: 2 nm
+Tip angle: 20.83
