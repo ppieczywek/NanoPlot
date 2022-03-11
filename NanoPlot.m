@@ -22,7 +22,7 @@ function varargout = NanoPlot(varargin)
 
 % Edit the above text to modify the response to help NanoPlot
 
-% Last Modified by GUIDE v2.5 10-Jun-2021 14:16:32
+% Last Modified by GUIDE v2.5 11-Mar-2022 15:31:50
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -165,7 +165,8 @@ varargout{1} = handles.output;
                      handles.AfmData{NewPosition}.Indentation, ...
                      handles.AfmData{NewPosition}.HertzFit(DataSelection,1)*handles.AfmData{NewPosition}.Indentation.^(3/2), ...
                      'r-', ...
-                     'LineWidth',2);
+                     'LineWidth',2, ...
+                     'ButtonDownFcn',{@HertzPlot_ButtonDownFcn, handles});
 
                 xlim(handles.HertzPlot, ....
                      [min(handles.AfmData{NewPosition}.Indentation) 
@@ -210,7 +211,8 @@ varargout{1} = handles.output;
                      handles.AfmData{NewPosition}.Indentation, ...
                      handles.AfmData{NewPosition}.SneddonFit(DataSelection,1)*handles.AfmData{NewPosition}.Indentation.^2, ...
                      'r-', ...
-                     'LineWidth',2);
+                     'LineWidth',2, ...
+                     'ButtonDownFcn',{@SneddonPlot_ButtonDownFcn, handles});
 
                 xlim(handles.SneddonPlot, ...
                     [min(handles.AfmData{NewPosition}.Indentation)
@@ -2046,3 +2048,53 @@ function CExportToCsv_Callback(hObject, eventdata, handles)
         end
     end
     
+
+% --- Executes on mouse press over axes background.
+function HertzPlot_ButtonDownFcn(hObject, eventdata, handles)
+     MousePosition = get(handles.HertzPlot, 'CurrentPoint');
+     ErrorCode = 0;
+     
+     if ~isempty(handles.AfmData)
+        NewPosition = get(handles.FileList,'Value');
+        if ~cellfun('isempty', handles.AfmData(NewPosition))
+            Indentation = handles.AfmData{NewPosition}.Indentation;
+            Force = handles.AfmData{NewPosition}.Force;
+            MousePosition(1,1)
+            if MousePosition(1,1) > min(Indentation) && ...
+               MousePosition(1,1) < max(Indentation)
+               
+                [C, I] = min(abs(( Indentation - MousePosition(1,1))));
+                indentation_value = Indentation(I);
+                force_value = Force(I);
+                f = msgbox({['indentation = ', num2str(indentation_value, 4)], ...
+                            ['force = ', num2str(force_value, 4)]});
+            end
+        end
+     end
+guidata(hObject, handles);    
+
+
+% --- Executes on mouse press over axes background.
+function SneddonPlot_ButtonDownFcn(hObject, eventdata, handles)
+     MousePosition = get(handles.SneddonPlot, 'CurrentPoint');
+     ErrorCode = 0;
+     
+     if ~isempty(handles.AfmData)
+        NewPosition = get(handles.FileList,'Value');
+        if ~cellfun('isempty', handles.AfmData(NewPosition))
+            Indentation = handles.AfmData{NewPosition}.Indentation;
+            Force = handles.AfmData{NewPosition}.Force;
+            MousePosition(1,1)
+            if MousePosition(1,1) > min(Indentation) && ...
+               MousePosition(1,1) < max(Indentation)
+               
+                [C, I] = min(abs(( Indentation - MousePosition(1,1))));
+                indentation_value = Indentation(I);
+                force_value = Force(I);
+                f = msgbox({['indentation = ', num2str(indentation_value, 4)], ...
+                            ['force = ', num2str(force_value, 4)]});
+            end
+        end
+     end
+guidata(hObject, handles);    
+
