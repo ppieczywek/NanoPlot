@@ -22,7 +22,7 @@ function varargout = NanoPlot(varargin)
 
 % Edit the above text to modify the response to help NanoPlot
 
-% Last Modified by GUIDE v2.5 11-Mar-2022 15:31:50
+% Last Modified by GUIDE v2.5 12-Jul-2022 10:20:32
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -156,7 +156,7 @@ varargout{1} = handles.output;
                  ~isempty(handles.AfmData{NewPosition}.SneddonFit) && ...
                  ~isempty(handles.AfmData{NewPosition}.SneddonModulus) )
              
-                DataSelection = 1; 
+                DataSelection = handles.DataSelection; 
                 
                 plot(handles.HertzPlot, ...
                      handles.AfmData{NewPosition}.Indentation, ...
@@ -194,7 +194,12 @@ varargout{1} = handles.output;
                     'Parent',handles.HertzPlot,...
                     'FontSize',8);
                 
-                 str = 'total';
+                 if DataSelection == 1
+                    str = 'total';
+                 else
+                    str = num2str(DataSelection-1);
+                 end
+                 
                  text(  0.05, 0.95, ['Eh ' str '    ' num2str(handles.AfmData{NewPosition}.HertzModulus(DataSelection),4) ' kPa'] ,...
                         'Units','normalized',...
                         'HorizontalAlignment','left',...
@@ -240,7 +245,7 @@ varargout{1} = handles.output;
                     'Parent',handles.SneddonPlot,...
                     'FontSize',8);
 
-                 str = 'total';
+                 % str = 'total';
                  text(  0.05, 0.95, ['Es ' str '    ' num2str(handles.AfmData{NewPosition}.SneddonModulus(DataSelection),4) ' kPa'] ,...
                     'Units','normalized',...
                     'HorizontalAlignment','left',...
@@ -351,6 +356,7 @@ function MainWindow_WindowButtonDownFcn(hObject, eventdata, handles)
                     else
                     
                     end
+                    handles.DataSelection = 1;
                     UpdateListInfo(hObject, handles);
                     UpdateDeflectionPlot(hObject, handles);
                     UpdateIndentationPlot(hObject, handles);
@@ -394,6 +400,7 @@ function MainWindow_WindowScrollWheelFcn(hObject, eventdata, handles)
                             handles.AfmData{NewPosition}.Force = Force;
                             [handles.AfmData{NewPosition} ErrorCode] = FitData(handles.AfmData{NewPosition}, Settings); 
 
+                            handles.DataSelection = 1;
                             UpdateDeflectionPlot(hObject, handles);
                             UpdateIndentationPlot(hObject, handles);
                             UpdateTable(hObject, eventdata, handles);
@@ -408,6 +415,7 @@ guidata(hObject, handles);
 
 function FileList_Callback(hObject, eventdata, handles)
     
+    handles.DataSelection = 1;
     UpdateDeflectionPlot(hObject, handles);
     UpdateIndentationPlot(hObject, handles);
     UpdateTable(hObject, eventdata, handles);
@@ -520,6 +528,7 @@ function AddFile_Callback(hObject, eventdata, handles)
                    
         NewPosition = length(handles.AfmData);
 
+        handles.DataSelection = 1;
         set(handles.FileList,'Value',NewPosition);
         set(handles.FileList,'String',char(handles.FileNameList));
         UpdateListInfo(hObject, handles);                
@@ -558,6 +567,7 @@ function RemoveFile_Callback(hObject, eventdata, handles)
             end
         end
     end
+    handles.DataSelection = 1;
     UpdateListInfo(hObject, handles);
     UpdateDeflectionPlot(hObject, handles);
     UpdateIndentationPlot(hObject, handles);
@@ -598,6 +608,8 @@ function CDeflectionSensitivity_Callback(hObject, eventdata, handles)
         end
     end
     close(h);
+    
+    handles.DataSelection = 1;
     UpdateIndentationPlot(hObject, handles);
     UpdateTable(hObject, eventdata, handles);
     guidata(hObject, handles);
@@ -642,6 +654,7 @@ function CProbeK_Callback(hObject, eventdata, handles)
     end
     close(h);
    
+    handles.DataSelection = 1;
     UpdateIndentationPlot(hObject, handles);
     UpdateTable(hObject, eventdata, handles);
     guidata(hObject, handles);
@@ -673,6 +686,7 @@ function ClearAll_Callback(hObject, eventdata, handles)
                     UpdateIndentationPlot(hObject, handles);
                     UpdateBoxPlot(hObject, handles);
                     UpdateTable(hObject, eventdata, handles);
+                    handles.DataSelection = 1;
                     
                 case 'No'
                     
@@ -727,6 +741,7 @@ function CTipRadius_Callback(hObject, eventdata, handles)
         end
     end
     close(h)
+    handles.DataSelection = 1;
     UpdateIndentationPlot(hObject, handles);
     UpdateTable(hObject, eventdata, handles);
  guidata(hObject, handles);
@@ -785,6 +800,7 @@ function CMu_Callback(hObject, eventdata, handles)
         end
     end
     close(h);
+    handles.DataSelection = 1;
     UpdateIndentationPlot(hObject, handles);
     UpdateTable(hObject, eventdata, handles);
  guidata(hObject, handles);
@@ -841,6 +857,7 @@ function CAlpha_Callback(hObject, eventdata, handles)
     end
     close(h);
     
+    handles.DataSelection = 1;
     UpdateIndentationPlot(hObject, handles);
     UpdateTable(hObject, eventdata, handles);
  guidata(hObject, handles);
@@ -955,7 +972,7 @@ function CStepSize_Callback(hObject, eventdata, handles)
             close(h);
         end
     end
-    
+    handles.DataSelection = 1;
     UpdateIndentationPlot(hObject, handles);
     UpdateTable(hObject, eventdata, handles);
 guidata(hObject, handles); 
@@ -1051,14 +1068,18 @@ function [ OutputData ErrorCode] = FitData(Data, Settings)
 
     ShowWarningWnd = 0;
 
-    CurrentNumberOfSteps = Data.Indentation(end) / Settings.StepSize;
+    [C,I] = max(Data.Indentation);
+    CurrentNumberOfSteps = C / Settings.StepSize;
     if CurrentNumberOfSteps >= Settings.NumberOfSteps
         CurrentNumberOfSteps = Settings.NumberOfSteps;
     elseif CurrentNumberOfSteps < Settings.NumberOfSteps
         CurrentNumberOfSteps = floor(CurrentNumberOfSteps);
     end
+    %CurrentNumberOfSteps
+    %NumberOfMatrixElements = floor(I / CurrentNumberOfSteps); 
     
-    NumberOfMatrixElements = floor(Settings.StepSize / (Data.Indentation(end) / length(Data.Indentation)));
+    [C2, I2] = min(abs(Data.Indentation(1:I) - Settings.StepSize));
+    NumberOfMatrixElements = I2;
 
     XX = Data.Indentation;
     YY = Data.Force; 
@@ -1101,8 +1122,8 @@ function [ OutputData ErrorCode] = FitData(Data, Settings)
     
     SneddonModulus(1) = (c2.a / Cs) / 0.000001;
     SneddonFit(1,:) = [ c2.a gof2.rsquare  gof2.rmse ];
-        
-    if NumberOfMatrixElements >= 6 && CurrentNumberOfSteps > 0
+    
+    if NumberOfMatrixElements >= 4 && CurrentNumberOfSteps > 0
         for ii=1:CurrentNumberOfSteps
             try
 %                 X = XX((1+((ii-1)*NumberOfMatrixElements)):(ii*NumberOfMatrixElements));
@@ -1190,8 +1211,9 @@ function [ I ] = GetIndentationPoint(Y)
 
     
 function [ DefErrBL ] = BaseLineCorrection(Data)
-    p = polyfit(Data.Z(1:Data.ContactPointIdx),Data.DefErr(1:Data.ContactPointIdx),1);
-    DefErrBL = Data.DefErr - (p(1)*Data.Z + p(2));
+    DefErrBL = Data.DefErr;
+    %p = polyfit(Data.Z(1:Data.ContactPointIdx),Data.DefErr(1:Data.ContactPointIdx),1);
+    %DefErrBL = Data.DefErr - (p(1)*Data.Z + p(2));
     
                         
 function [ Settings ] = GetInputData(handles)
@@ -1234,10 +1256,12 @@ function CFitData_CellSelectionCallback(hObject, eventdata, handles)
             Data = get(hObject,'Data');
             if ~isempty(Data)   
                if eventdata.Indices(1,1) <= length(Data(:,1))
-                   handles.DataSelection = eventdata.Indices(1,1);        
+                   handles.DataSelection = eventdata.Indices(1,1);   
+                   handles.DataSelection
                end
             end
         end
+        UpdateIndentationPlot(hObject, handles);
         UpdateBoxPlot(hObject, handles);
     end
  guidata(hObject, handles); 
@@ -2097,4 +2121,3 @@ function SneddonPlot_ButtonDownFcn(hObject, eventdata, handles)
         end
      end
 guidata(hObject, handles);    
-
