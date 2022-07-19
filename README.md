@@ -1,4 +1,4 @@
-# NanoPlot v1.0 - Manual
+# NanoPlot v1.1 - Manual
 
 ## Introduction
 This software was designed to analyze Multimode NanoScrope AFM Bruker force-distance curves calculate sample indentation depth and sample Young modulus. Young modulus is calculated using two different contact models – Hertz and Sneddon model [https://doi.org/10.1016/j.tifs.2018.04.011]. Software implements principles of AFM stiffness tomography [https://doi.org/10.1016/j.bpj.2009.05.010]. The goal was to provide robust software that enables mass data processing while viewing individual results.
