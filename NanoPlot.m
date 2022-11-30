@@ -597,8 +597,8 @@ function CDeflectionSensitivity_Callback(hObject, eventdata, handles)
             for ii=1:ln
                 if ~cellfun('isempty', handles.AfmData(ii))
                     if ~isempty(handles.AfmData{ii}.ContactPointIdx)
-                        [Indetation Force] = UpdateIndentationData(handles.AfmData{ii}, Settings);
-                        handles.AfmData{ii}.Indetation = Indetation;
+                        [Indentation Force] = UpdateIndentationData(handles.AfmData{ii}, Settings);
+                        handles.AfmData{ii}.Indentation = Indentation;
                         handles.AfmData{ii}.Force = Force;
                         [handles.AfmData{ii} ErrorCode] = FitData(handles.AfmData{ii}, Settings);
                     end
@@ -641,8 +641,8 @@ function CProbeK_Callback(hObject, eventdata, handles)
             for ii=1:ln
                 if ~cellfun('isempty', handles.AfmData(ii))
                     if ~isempty(handles.AfmData{ii}.ContactPointIdx)
-                        [Indetation Force] = UpdateIndentationData(handles.AfmData{ii}, Settings);
-                        handles.AfmData{ii}.Indetation = Indetation;
+                        [Indentation Force] = UpdateIndentationData(handles.AfmData{ii}, Settings);
+                        handles.AfmData{ii}.Indentation = Indentation;
                         handles.AfmData{ii}.Force = Force;
                         [handles.AfmData{ii} ErrorCode] = FitData(handles.AfmData{ii}, Settings); 
                     end
@@ -961,8 +961,8 @@ function CStepSize_Callback(hObject, eventdata, handles)
             for ii=1:ln
                 if ~cellfun('isempty', handles.AfmData(ii))
                     if ~isempty(handles.AfmData{ii}.ContactPointIdx)
-                        [Indetation Force] = UpdateIndentationData(handles.AfmData{ii}, Settings);
-                        handles.AfmData{ii}.Indetation = Indetation;
+                        [Indentation Force] = UpdateIndentationData(handles.AfmData{ii}, Settings);
+                        handles.AfmData{ii}.Indentation = Indentation;
                         handles.AfmData{ii}.Force = Force;
                         [handles.AfmData{ii} ErrorCode] = FitData(handles.AfmData{ii}, Settings); 
                     end
@@ -1006,7 +1006,7 @@ function CNumberOfSteps_Callback(hObject, eventdata, handles)
             for ii=1:ln
                 if ~cellfun('isempty', handles.AfmData(ii))
                     if ~isempty(handles.AfmData{ii}.ContactPointIdx)
-                        [handles.AfmData{ii}.Indetation ...
+                        [handles.AfmData{ii}.Indentation ...
                          handles.AfmData{ii}.Force] = UpdateIndentationData(handles.AfmData{ii}, Settings);
                          %= Indetation;
                          %= Force;
@@ -1058,6 +1058,7 @@ function [ OutputData ErrorCode] = FitData(Data, Settings)
     OutputData.SneddonFit = [];
     OutputData.HertzModulus = [];
     OutputData.HertzFit = [];
+    OutputData.IndentationDepth = [];
    
     ErrorCode = 0;   
     
@@ -1075,6 +1076,10 @@ function [ OutputData ErrorCode] = FitData(Data, Settings)
     elseif CurrentNumberOfSteps < Settings.NumberOfSteps
         CurrentNumberOfSteps = floor(CurrentNumberOfSteps);
     end
+    
+    IndentationDepth = zeros(CurrentNumberOfSteps+1,1);
+    IndentationDepth(1) = C;
+    
     %CurrentNumberOfSteps
     %NumberOfMatrixElements = floor(I / CurrentNumberOfSteps); 
     
@@ -1116,7 +1121,8 @@ function [ OutputData ErrorCode] = FitData(Data, Settings)
        ErrorCode = -1;
        return;
     end
-        
+    
+    
     SneddonModulus = zeros(CurrentNumberOfSteps+1,1);
     SneddonFit = zeros(CurrentNumberOfSteps+1,3);
     
@@ -1130,6 +1136,9 @@ function [ OutputData ErrorCode] = FitData(Data, Settings)
 %                 Y = YY((1+((ii-1)*NumberOfMatrixElements)):(ii*NumberOfMatrixElements));
                 X = XX(1:(ii*NumberOfMatrixElements));
                 Y = YY(1:(ii*NumberOfMatrixElements));
+                
+                IndentationDepth(ii+1) = max(X);
+                
                 X = X - X(1);
                 X(X < 0) = 0;
                 Y = Y - Y(1);
@@ -1177,6 +1186,7 @@ function [ OutputData ErrorCode] = FitData(Data, Settings)
     OutputData.SneddonFit = SneddonFit;
     OutputData.HertzModulus = HertzModulus;
     OutputData.HertzFit = HertzFit;
+    OutputData.IndentationDepth = IndentationDepth;
 
 function [ I ] = GetIndentationPoint(Y)
     
@@ -1969,104 +1979,70 @@ function CExportToCsv_Callback(hObject, eventdata, handles)
                 TotalBarLength = NumberOfFiles *2;
                 BarCount = 0;
                 waitbar(BarCount/TotalBarLength,h,'Processing data...');
-                
-                [Settings] = GetInputData(handles);
-                
-                Modulus = cell(NumberOfFiles,Settings.NumberOfSteps+1);
-                RMS = cell(NumberOfFiles,Settings.NumberOfSteps+1);
-                R2 = cell(NumberOfFiles,Settings.NumberOfSteps+1);
-
-                modulus_header = {'file_name' 'total'};
-                rms_header = {'file_name' 'total'};
-                r2_header = {'file_name' 'total'};
-                
-                for kk=1:1:Settings.NumberOfSteps
-                    modulus_header = [modulus_header ['modulus at ' num2str(kk*Settings.StepSize,3) ' nm [kPa]']];
-                    rms_header = [rms_header ['rms at ' num2str(kk*Settings.StepSize,3) ' [kPa]']];
-                    r2_header = [r2_header ['r2 at ' num2str(kk*Settings.StepSize,3)]];
-                end
-                
+                              
+                fid = fopen([Path(1:end-4) '.csv'],'w');
+                fprintf(fid,'file_name,model,segment,depth(nm),modulus(kPa)');
+                fprintf(fid,'\n');
+                            
                 for ii=1:NumberOfFiles
-                    
-                    Modulus{ii,1} = handles.AfmData{ii}.FileName;
-                    RMS{ii,1} = handles.AfmData{ii}.FileName;
-                    R2{ii,1} = handles.AfmData{ii}.FileName;
-                    
+                    BarCount = BarCount + 1;
+                    waitbar(BarCount/TotalBarLength,h,'Processing data...');
                     if ~isempty(handles.AfmData{ii}.HertzModulus) 
                         for kk =1:1:length(handles.AfmData{ii}.HertzModulus)
-                            Modulus{ii,kk+1} = handles.AfmData{ii}.HertzModulus(kk);
-                            RMS{ii,kk+1} = handles.AfmData{ii}.HertzFit(kk);
-                            R2{ii,kk+1} = handles.AfmData{ii}.HertzFit(kk);
+
+
+                            str = handles.AfmData{ii}.FileName;
+                            fprintf(fid,'%s,', str);
+                            fprintf(fid,'%s,', 'hertz');
+
+                            if kk == 1
+                                str = '-1';
+                                fprintf(fid,'%s,', str);
+                            else
+                                str = num2str(kk-1);
+                                fprintf(fid,'%s,', str);
+                            end
+
+                            str = num2str(handles.AfmData{ii}.IndentationDepth(kk));
+                            fprintf(fid,'%s,', str);
+                            str = num2str(handles.AfmData{ii}.HertzModulus(kk));
+                            fprintf(fid,'%s', str);
+                            fprintf(fid,'\n');
                         end
                     end
-                    BarCount = BarCount + 1;
-                    waitbar(BarCount/TotalBarLength,h,'Processing data...');
-                end       
-                
-                output_data = [modulus_header; Modulus];
-                [rows cols] = size(output_data);
-                
-                fid = fopen([Path(1:end-4) '_Hertz.csv'],'w');
-                for jj=1:1:rows
-                    str = '';
-                    for ii=1:1:cols  
-                        if ii == 1
-                            str = strcat(str, num2str(output_data{jj,ii}));
-                        else
-                            str = strcat(str, ',', num2str(output_data{jj,ii}));
-                        end
-                    end
-                    fprintf(fid,'%s\n', str)
                 end
-                fclose(fid)
-                
-                        
-                Modulus = cell(NumberOfFiles,Settings.NumberOfSteps+1);
-                RMS = cell(NumberOfFiles,Settings.NumberOfSteps+1);
-                R2 = cell(NumberOfFiles,Settings.NumberOfSteps+1);
                 
                 for ii=1:NumberOfFiles
-                    
-                    Modulus{ii,1} = handles.AfmData{ii}.FileName;
-                    RMS{ii,1} = handles.AfmData{ii}.FileName;
-                    R2{ii,1} = handles.AfmData{ii}.FileName;
-                    
-                    if ~isempty(handles.AfmData{ii}.SneddonModulus) 
-                        for kk =1:1:length(handles.AfmData{ii}.SneddonModulus)
-                            Modulus{ii,kk+1} = handles.AfmData{ii}.SneddonModulus(kk);
-                            RMS{ii,kk+1} = handles.AfmData{ii}.SneddonFit(kk);
-                            R2{ii,kk+1} = handles.AfmData{ii}.SneddonFit(kk);
-                        end
-                    end
                     BarCount = BarCount + 1;
                     waitbar(BarCount/TotalBarLength,h,'Processing data...');
-                end       
-                
-                fid = fopen([Path(1:end-4) '_Sneddon.csv'],'w');
-                for jj=1:1:rows
-                    str = '';
-                    for ii=1:1:cols  
-                        if ii == 1
-                            str = strcat(str, num2str(output_data{jj,ii}));
-                        else
-                            str = strcat(str, ',', num2str(output_data{jj,ii}));
+                    if ~isempty(handles.AfmData{ii}.SneddonModulus) 
+                        for kk =1:1:length(handles.AfmData{ii}.SneddonModulus)
+
+
+                            str = handles.AfmData{ii}.FileName;
+                            fprintf(fid,'%s,', str);
+                            fprintf(fid,'%s,', 'sneddon');
+
+                            if kk == 1
+                                str = '-1';
+                                fprintf(fid,'%s,', str);
+                            else
+                                str = num2str(kk-1);
+                                fprintf(fid,'%s,', str);
+                            end
+
+                            str = num2str(handles.AfmData{ii}.IndentationDepth(kk));
+                            fprintf(fid,'%s,', str);
+                            str = num2str(handles.AfmData{ii}.SneddonModulus(kk));
+                            fprintf(fid,'%s', str);
+                            fprintf(fid,'\n');
                         end
                     end
-                    fprintf(fid,'%s\n', str)
                 end
-                fclose(fid)
                 
-
+                fclose(fid);
                 
-%                 xlswrite(Path, modulus_header,'sneddon_modulus','A1');
-%                 xlswrite(Path, Modulus,'sneddon_modulus','A2');
-%                 
-%                 xlswrite(Path, modulus_header,'sneddon_rms','A1');
-%                 xlswrite(Path, RMS,'sneddon_rms','A2');
-%                 
-%                 xlswrite(Path, modulus_header,'sneddon_r2','A1');
-%                 xlswrite(Path, R2,'sneddon_r2','A2');
-
+       
                 close(h);
             end
         end
